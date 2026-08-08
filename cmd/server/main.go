@@ -10,7 +10,9 @@ import (
 
 	"github.com/hawthorne/bff-api-go-collections-client-late-paying/internal/application/usecases"
 	"github.com/hawthorne/bff-api-go-collections-client-late-paying/internal/infrastructure"
+	"github.com/hawthorne/bff-api-go-collections-client-late-paying/internal/infrastructure/fieldcrypto"
 	"github.com/hawthorne/bff-api-go-collections-client-late-paying/internal/interface/api"
+	"github.com/hawthorne/bff-api-go-collections-client-late-paying/internal/interface/api/handlers"
 )
 
 func main() {
@@ -26,15 +28,23 @@ func main() {
 	// Create use cases
 	collectionsUC := usecases.NewCollectionsUseCase(coreClient)
 
+	// Create crypto session handler
+	cryptoSessionH := handlers.NewCryptoSessionHandler(
+		fieldcrypto.NewSessionManager(
+			fieldcrypto.NewSessionStore(cfg.CryptoSessionTTL),
+			cfg.CryptoSessionSecret, cfg.CryptoSessionIssuer, cfg.CryptoSessionTTL,
+		),
+	)
+
 	// Create router
-	router := api.NewRouter(collectionsUC)
+	router := api.NewRouter(collectionsUC, coreClient, cryptoSessionH)
 
 	// Graceful shutdown setup
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	// Start server
-	addr := fmt.Sprintf(":%s", cfg.Port)
+	addr := fmt.Sprintf(":%d", cfg.ServerPort)
 	log.Printf("Starting bff-api-go-collections-client-late-paying on %s", addr)
 
 	go func() {

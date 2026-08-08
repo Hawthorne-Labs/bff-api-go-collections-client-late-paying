@@ -3,7 +3,7 @@ module github.com/hawthorne/bff-api-go-collections-client-late-paying
 go 1.26.5
 
 require (
-	github.com/Hawthorne-Labs/shared-observability-go v0.0.0
+	github.com/Hawthorne-Labs/shared-observability-go v0.0.0-20260609163720-2a1936882c52
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
 	go.opentelemetry.io/otel v1.44.0

@@ -7,12 +7,13 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hawthorne/bff-api-go-collections-client-late-paying/internal/application/usecases"
+	"github.com/hawthorne/bff-api-go-collections-client-late-paying/internal/infrastructure"
 	"github.com/hawthorne/bff-api-go-collections-client-late-paying/internal/interface/api/handlers"
 	"github.com/hawthorne/bff-api-go-collections-client-late-paying/internal/interface/api/middleware"
 )
 
 // NewRouter creates and configures the Gin router.
-func NewRouter(uc *usecases.CollectionsUseCase) *gin.Engine {
+func NewRouter(uc *usecases.CollectionsUseCase, coreClient *infrastructure.CoreClient, cryptoSession *handlers.CryptoSessionHandler) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
@@ -96,19 +97,28 @@ func NewRouter(uc *usecases.CollectionsUseCase) *gin.Engine {
 		auth.POST("/dev-login", h.ForwardDevLogin)
 	}
 
-	return r
-}
+	// Audit proxy routes
+	auditH := handlers.NewAuditHandler(coreClient)
+	audit := r.Group("/api/v1/collections/audit")
+	{
+		audit.GET("/recent", auditH.Recent)
+		audit.GET("/by-entity", auditH.ByEntity)
+		audit.GET("/integrity", auditH.Integrity)
+	}
 
-// CORS adds CORS headers.
-func CORS() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Trace-Id, X-Tenant-Id, Idempotency-Key, Crypto-Session-Id, Crypto-Request-Id, Crypto-Version, Crypto-Tenant-Id")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(http.StatusNoContent)
+	// M2M whoami
+	r.GET("/api/v1/collections/m2m/whoami", func(c *gin.Context) {
+		sub := c.GetHeader("X-Auth-Sub")
+		if sub == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing X-Auth-Sub"})
 			return
 		}
-		c.Next()
-	}
+		jti := c.GetHeader("X-Auth-Jti")
+		c.JSON(http.StatusOK, gin.H{"sub": sub, "jti": jti})
+	})
+
+	// Crypto session handshake
+	r.POST("/api/v1/collections/crypto-session", cryptoSession.Handshake)
+
+	return r
 }

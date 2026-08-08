@@ -1,7 +1,8 @@
-// Package middleware provides tracing middleware.
+// Package middleware provides tracing and CORS middleware.
 package middleware
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -30,6 +31,20 @@ func Tracing() gin.HandlerFunc {
 
 		// Log request duration
 		c.Set("duration_ms", duration.Milliseconds())
+	}
+}
+
+// CORS adds Cross-Origin Resource Sharing headers.
+func CORS() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Trace-Id, X-Tenant-Id, Idempotency-Key, Crypto-Session-Id, Crypto-Request-Id, Crypto-Version, Crypto-Tenant-Id")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+		c.Next()
 	}
 }
 

@@ -6,8 +6,23 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
+
+// CoreClient is an HTTP client for the collections core.
+type CoreClient struct {
+	BaseURL *url.URL
+}
+
+// NewCoreClient creates a CoreClient from the given Config.
+func NewCoreClient(cfg Config) (*CoreClient, error) {
+	u, err := url.Parse(cfg.CoreAPIURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse core api url: %w", err)
+	}
+	return &CoreClient{BaseURL: u}, nil
+}
 
 // ForwardRequest forwards a request to the core-api and returns the response.
 func (c *CoreClient) ForwardRequest(method, path string, body interface{}) (*http.Response, error) {
